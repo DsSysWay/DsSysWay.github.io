@@ -112,14 +112,13 @@ pull方案既要查询关系链，又要根据关系链去动态列表中过滤�
 为了防止恐怖的写扩散,我们可以在friendfeeds数据表中加入新的属性如下：<pre><code>uid，content，feedslist[feedsid1,feedsid2....]，hotuidlist[uid1,uid2....]，timestamp</code></pre>
 feedslist存储的是关注人最近发布的动态id，按照发布时间排序。hotuidlist是自己关注的热门账户uid 列表。timestamp是用户上次拉取动作的时间戳。
 另外有个hash表（简称动态时间hash）存储热点用户的最新的动态发表时间戳，最近一周内发布的动态的id和对应的时间戳，hash表结构表示为：
-<pre><code>
-key：uid
-value：【最新动态时间戳，[{feedsid1:timestamp1},{feedsid2:timestamp2}.........]】</code></prev>
+<pre><code>key：uid
+value：最新动态时间戳，[{feedsid1:timestamp1},{feedsid2:timestamp2}.........]</code></pre>
 每次热点用户发布新动态的时候都会去更新这张hash表的发表时间戳和id。用户在拉完friendfeeds   里普通关注人的feedslist之后，也会拉到关注的热点账号的uidlist和上次拉取的时间戳。
 拿这个时间戳去动态时间hash表中比对下时间戳，如果不一致就根据时间戳过滤出hash表中的这些热门账号的feedsid，再把拿到的这些feedslist索引去feeds表中拉取真正的动态数据。
 这样拉取动态的时间复杂度是O（M+N*T/2）M是feedslist长度，N是用户关注的热点账号，T是每个热点账号还未被用户拉取的动态数量。采用这种方案避免了push的写扩散，
 相对pull先去查关系链再去遍历feeds表要快些，少了查关系链的sql操作。用户长时间没有登录，后台的定时任务可以重置热点状态，同时删除friendfeeds中关于用户的feedslist数据。
-friendfeeds  和hash  这两个结构建议放在cache里，承载的组件可以用redis。
+friendfeeds  和hash  这两个结构建议放在cache里，承载的组件可以用redis。</p>
 
 <p>  当然，对于一个新业务，快速上线才是王道，怎么简单怎么做。当请求量大之后架构上可以支持快速加机器扛住请求。做复合优化方案不需要对存储做大的变动。
 个人觉得就是好的方案。第一次发文，有错误的地方欢迎拍砖~</p>
