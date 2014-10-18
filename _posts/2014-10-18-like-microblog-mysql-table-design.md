@@ -17,7 +17,7 @@ tags:
 下午需求做完了，刚好其他同事在搞方案评审。做的是一个新的sns产品。所以去旁听了会。sns中涉及到好友动态查看，以及互粉关系链存储，评论这些功能。由于是节目订阅类， 产品的功能点有很多跟微博类似。之前使用公司的架构同样可以扛住海量用户的请求冲击。但是leader的想法是追求创业团队的小而美，快速迭代上线。用公司的框架太重了， 调用链路太长，开发和维护的成本都比较高。所以架构上采用了通用的lamp组件进行开发。问题来了，挖掘机哪家强.......哦，说错了，是mysql中的数据结构如何组织才能够支持 快速的查询和数据层的无障碍扩容。 
 
 ----
-关系链中因为有关注，有粉丝，最简单粗暴的方式是把这些关系都存成一张表。表属性设置为fromid，toid，timestamp。fromid代表发起关注者的id，toid表示被关注对象的id。 我们暂时称这张表为A吧。如果要查一个人关注了谁，<pre><code>select toid from tablename where fromid=XXXX</code></pre>就行。如果要查一个人的粉丝是谁，
+关系链中因为有关注，有粉丝，最简单粗暴的方式是把这些关系都存成一张表。表属性设置为fromid，toid，timestamp。fromid代表发起关注者的id，toid表示被关注对象的id。 我们暂时称这张表为A吧。如果要查一个人关注了谁，<pre><code>select toid from tablename where fromid=XXXX</code></pre>就行。如果要查一个人的粉丝是谁<pre><code>select fromid from tablename where toid=XXXX</code></pre>就可以检索出来
 
 
 ----
