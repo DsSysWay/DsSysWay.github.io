@@ -1,6 +1,6 @@
 markdown: rdiscount
 permalink: /:year/:month/:day/:title/
-url: http://dssysgithub.github.io
+url: http://dssysway.github.io
 author: chriswei
 highlighter: pygments
 safe: true

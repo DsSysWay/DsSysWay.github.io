@@ -7,31 +7,459 @@
     <title>chriswei</title>
     <link href="http://dssysgithub.github.io/feed/" rel="self" />
     <link href="http://dssysway.github.io" />
-    <lastBuildDate>2014-10-18T12:01:28+08:00</lastBuildDate>
+    <lastBuildDate>2015-02-14T20:10:40+08:00</lastBuildDate>
     <webMaster>linuxserverlover@gmail.com</webMaster>
     
     <item>
-      <title>类微博类mysql数据库存储方案设计</title>
-      <link href="http://dssysgithub.github.io/2014/10/18/%E7%B1%BB%E5%BE%AE%E5%8D%9A%E7%B1%BBmysql%E6%95%B0%E6%8D%AE%E5%BA%93%E5%AD%98%E5%82%A8%E6%96%B9%E6%A1%88%E8%AE%BE%E8%AE%A1/"/>
-      <pubDate>2014-10-18T00:00:00+08:00</pubDate>
+      <title>vim读书笔记</title>
+      <link href="http://dssysgithub.github.io/2014/10/21/vim-read-book-note/"/>
+      <pubDate>2014-10-21T00:00:00+08:00</pubDate>
       <author>chriswei</author>
-      <guid>http://dssysgithub.github.io/2014/10/18/类微博类mysql数据库存储方案设计</guid>
+      <guid>http://dssysgithub.github.io/2014/10/21/vim-read-book-note</guid>
       <content:encoded><![CDATA[<hr />
 
-<p>layout: post
-title: "类微博类产品mysql存储方案设计."
-categories:
-- db scheme
-tags:
-- db</p>
+<p>以前整理过vim的读书笔记，有本书是一位在读的印度学生写的， 写了些常用
+的使用技巧，不像vim  用户手册那么大而全，非常适合用户自己
+日常工作的使用，以下指令就可以高效完成90%的文本编辑工作了。
+当然只是一些速记笔记，掌握vim的人可以时不时翻一下，以便回忆起一些
+很久没用到有点生疏的指令</p>
+
+<h3>跳转</h3>
 
 <hr />
+
+<pre>
+<code>
+Normal mode
+
+:x   save working files and quit
+:wq 
+ ZZ 
+ :qa   Exit all open files
+ :version
+ vimtutor
+ [Ctrl] +  F
+ [Ctrl]  + B
+ [Ctrl]  + E
+ [Ctrl]   +  Y
+
+ jump :w  W  e  E  b B 
+ {
+ } 
+ ( 
+ )
+ [[ 
+ ]]
+
+ H  M   L  (screen  jump)
+
+
+ 50% (Go to the 50th percentage of file)
+ :50   (Go to the 50 th  line)
+ 50gg   (Another way to jump to 50 th line)
+
+
+ [(  (Go to the previous unmatched (    )
+ [])   (Go to the previous unmatched  )    )
+ [{    (Go to the previous unmatched  {    })
+ []}     (Go to the previous unmatched  )]]   )
+
+
+ [Ctrl]  + O (jump back to previous spot)
+ [Ctrl]   + I   (jump forward to next spot)
+
+
+</pre>
+
+
+<p></code></p>
+
+<h3>搜索</h3>
+
+<pre>
+<code>
+ vim +?search-term  filename   (Go to the first of the specified search term from bottom)
+ vim +/search-term  filename   (Go to the frist of the specified search term from top)
+ vim -t TAG  (Go to specific tag)
+
+
+</pre>
+
+
+<p></code></p>
+
+<h3>打标记</h3>
+
+<hr />
+
+<pre>
+<code>
+ marks:
+ ma
+ `a
+ 'a
+ :marks
+ 
+ ma,mb,then  :'a,'bs/old/new/gc
+ will display specific area  word
+ 
+ 
+ 
+ `"  (To the position where you did last edit before exit)
+ '.  (To the position of where the last change was made)
+ 
+ 
+ 
+ ddp  dwp  
+ 
+
+ :r!   COMMAND (Insert output of a command into current file after the current line)
+
+ Insert Mode
+ SHIFT + <Right  Arrow >  Go to right word -by-word  in insert mode
+ SHIFT + <Right  Arrow >  Go to left word-by-word  in insert mode
+ 
+ </code>
+ </pre>
+
+
+<h3>复制</h3>
+
+<p> <code>
+ <pre>
+ copy line to the clipboard</p>
+
+<p> :%y+
+ :y+
+ :N,My+</p>
+
+<p> To copy the visual selected line to the clipboard,first visually select the
+ lines, and :y+ which will apppear as :'&lt;,'>y+</p>
+
+<p> here please check if your vim version support y+　register</p>
+
+<p> write part of File to another File</p>
+
+<p> visual mode selected save area,  then :
+ :w newfilename</p>
+
+<p> also you can do like this:
+ :5,10w  newfilename</p>
+
+<p> swap line or character</p>
+
+<p> :xp   (swap character)
+ :ddp  (swap line)</p>
+
+<p> (dot)  usage:
+ 1. Search for a string in a file using: /zhihao
+ 2. Replace zhihao with wzhihao  using: cwwzhihao<Esc>
+ 3.Search for the next occurrence of zhihao:n
+ 4.Replace zhihao with wzhihao using:.(dot)</p>
+
+<p> </code>
+ </pre>
+ ###正则处理
+ <pre>
+ <code>
+ :g usage
+ :g/^$/d  (delete all empty lines in the file)
+ :g/^\s*$/d  (delete all  empty  and blank lines in the file)
+ :g/pattern/d  (delete )
+ :g/pattern/. w >> filename  (Extract line with specific pattern and
+ write it into another file)(very userful!!!)
+ :g/^/m0  (reverse a file)</p>
+
+<p> :g/^\s<em>PATTERN\exe "norm! |/</em>\<ESC>A<em>/\<ESC>"  (Add a C style comment {/</em>text */} to all lines matching the pattern)
+ (it can not work in gvim  yet,though it seems to be so useful  ~~~~)</p>
+
+<p> Copy Lines to Named Buffer for Later Use
+ valid named buffer: a to z (26 total valid named buffers)</p>
+
+<p> "ayy
+ "a5yy  (copied 5 lines to buffer "a")
+ "ap  (Paste copied lines from buffer "a"  after the cursor)
+ "aP  (Paste copied lines from buffer "a"   before the cursor)</p>
+
+<p> </code>
+ </pre></p>
+
+<h3>头文件预定义</h3>
+
+<p> <code>
+ <pre>
+ lowcase to uppercase,normally used in header file define
+ visual mode
+ select replace area
+ U  (to upper case)
+ u   (to lower case)</p>
+
+<p> sort file content from vim as below
+ :sort</p>
+
+<p> sort selected content
+ visual mode select specific area and add !sort at the end
+ :'&lt;,'>!sort</p>
+
+<p> :sort !  (descending order)
+ :sort i (sort ignore case)
+ :sort u (remove duplicate lines)</p>
+
+<p> </code>
+ </pre></p>
+
+<h3>创建酷炫的文件注释</h3>
+
+<p> <code>
+ <pre>
+ Extremely useful!  (78)</p>
+
+<p> create a new *.c  file with automatic header</p>
+
+<p> cat  c_header.txt
+ :insert</p>
+
+<p> /*-.-.-.-.-.-.--.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.</p>
+
+<pre><code>     File  Name:
+
+     Purpose:
+
+     Creation Date:
+
+     Last Modified:
+
+     Created By :
+</code></pre>
+
+<p> -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.*/</p>
+
+<p> add following lines in ~/.vimrc  file</p>
+
+<p> autocmd bufnewfile <em>.c  so  /chriswei/c_header.txt
+ autocmd bufnewfile </em>.c  exe "1," . 10 . "g/File  Name : .<em>/s//FileName : " .expand(%s)
+ autocmd  bufnewfile </em>.c  exe "1,"  .10 . "g/Creation Date :.*/s//Cteation Date: " .strftime("%d-%m-%Y")</p>
+
+<p>  autocmd Bufwritepre,filewritepre  <em>.c  execute "normal ma"
+  autocmd  Bufwritepre ,filewritepre </em>.c exe "1," . 10.
+  "g/Last Modified:.<em>/s/Last Modified:.</em>/Last Modified:" .strftime(%c)
+  autocmd bufwritepost,filewritepost *.c execute "normal `a"</p>
+
+<p> </code></p>
+
+<h2> </pre></h2>
+
+<p> <pre>
+ <code>
+  editor  color
+  :syn on
+  :syn off</p>
+
+<p>  (extremely useful!)
+  in vim Press K  on the word for which you want to read the man
+  page
+  K</p>
+
+<p>  (extremely useful!)
+  gd  (Go to the local declaration of a variable)</p>
+
+<p>  gD (Go to the global declaration of a variable)</p>
+
+<p>  (extremely useful)
+  [Ctrl]  -  A  (incre Number)
+  [Ctrl]  -  X   (Desc Number)</p>
+
+<p>  (extremely useful!)
+  to execute single Vim command  in insert mode</p>
+
+<p>  [Ctrl]  +　Ｏ</p>
+
+<p>  you are in insert mode typing characters
+  Press  Ctrl - O ,which will terporarily take you to command mode
+  do some vim command
+  then you will automatically back in insert mode after the single vim commands is executed</p>
+
+<p>  [Ctrl]  +  G  view file details</p>
+
+<p>  </code>
+  </pre></p>
+
+<hr />
+
+<p>  <code>
+  <pre>
+  gUU  change all the visual selected area to uppercase
+  guu change all the visual selected area to lowercase</p>
+
+<p>  execute any vim command when opening a file</p>
+
+<p>  vim -c '<command   1>'  -c '<command 2>'  <filename></p>
+
+<p>  skip loading plugins temporarily
+  vim --noplugin filename.txt</p>
+
+<p>  change color scheme</p>
+
+<p>  :colorsheme  [color scheme]</p>
+
+<p>  (extremely useful!)
+  gf  (open a file whose names is currently under the cursor)</p>
+
+<p>  </code>
+  </pre></p>
+
+<p>  ###vim加密文件</p>
+
+<p>  <code>
+  <pre>
+  (safe   encrypt  extremely useful)
+  :X</p>
+
+<p>  unencrypt
+  :set key =
+  (to remove encrypt key)</p>
+
+<p>  (extremely useful)
+  save and resume vim sessions
+  :mksession  filename</p>
+
+<p>  vim -S filename</p>
+
+<p>  </code></p>
+
+<h2>  </pre></h2>
+
+<p>  <code>
+  <pre>
+  (extremely useful)
+  vimdiff  filename.txt  filename.txt.backup
+  when diff window open
+  [c  (Go to the next change inside vimdiff)
+  ]c  (Go to the previous change inside vimdiff)</p>
+
+<p>  Page 124 is Useful</p>
+
+<p>  (extremely useful)
+  :vimgrep search-pattern   filename.*
+  (search for the search pattern inside all files ending  in .txt in the current directory)
+  vimgrep by default will jump to the first file that contains a match,
+  :cn (will jump to the next file)
+  :clist    (view all files match the pattern)</p>
+
+<p>  set vim as default editor as follow
+  export EDITOR=vi</p>
+
+<p>  view all changes done to a file after opening it
+  :changes</p>
+
+<p>  view ascii code of a charactor
+  ga</p>
+
+<p>  (extremely useful)
+  vim -b  binaryfile (edit binary files in vim editor)</p>
+
+<p>  </code>
+  </pre></p>
+
+<hr />
+
+<pre>
+<code>
+  terrible  useful，release  your  mouse：
+  paste  content  copy  by  yw  in  command line
+  1.  “ayw   copy  the  search  content
+  2. Ctrl-R  and  input  a    to paste the content
+  detailed introduction  below:
+  There are times when you're tempted to lift your hand from the keyboard 
+  to the mouse, idly wondering if there's a better way. One such case is
+  taking text from a buffer and placing it into Command-line mode. For example,
+  performing text substitution with %s, or invoking a shell command with :!.
+  Many Vim users will reach for the mouse and use the operating system's copy
+  and paste feature to do this, but there's a quicker way provided by Vim's registers.
+
+  The CTRL-R (:help i_CTRL-R) command can insert the contents of a register in Insert 
+  or Replace mode. This is known as a "special key" (:help ins-special-keys). 
+  The great thing about this shortcut is you can reuse it to put registers into
+  Command-line mode. For example, let's say you've got some text you want to search 
+  for in a buffer. First yank the text into a register, and then paste it with CTRL-R:
+  In Normal mode, type "ayw to yank a wordPress escape, and then / to searchThen press
+  CTRL-R and a to put register a
+  A shorter way to do this is to use the default register. Typing yw will yank up
+  to the word boundary into the default register, and then typing CTRL-R_" will put 
+  it into the command-line. It's worth practicing using this, particularly if you 
+  haven't got used to working with registers yet.
+  
+  (extremely useful!!!!!)
+  folder code
+  za (Toggle the fold under the cursor)
+  zR (unfold all folds)
+  zm (Fold everything back again)
+  :set foldmethod = manual
+  
+  zf/pattern  (to fold lines selected by the search pattern)
+  
+  :range fold  (To fold lines specified by a range)
+  :mkview (save all your folds as show above)
+  
+  :loadview
+   
+
+</code>
+</pre>
+
+
+<h3>推荐插件</h3>
+
+<hr />
+
+<pre>
+<code>
+   plugin
+
+    ctags
+    :ta main  (jump to the definition)
+    :ta /^get   (jump to the match pattern)
+
+    NERD  Tree  (specially useful)
+
+    autocorrect.vim  (nice)
+
+    (extremely userful!!!)
+    Align.vim
+
+    before align 
+    a = 1
+    hello world = 2
+    sh = 3
+
+    after align 
+    a           =  1
+    hello word  =  2
+    sh          = 3 
+
+    perform 
+    visual  mode select align area and input
+    :'<,'>Align = 
+
+</code>
+</pre>
+
+]]></content:encoded>
+    </item>
+    
+    <item>
+      <title>类微博类产品mysql存储方案设计.</title>
+      <link href="http://dssysgithub.github.io/2014/10/18/like-microblog-mysql-table-design/"/>
+      <pubDate>2014-10-18T00:00:00+08:00</pubDate>
+      <author>chriswei</author>
+      <guid>http://dssysgithub.github.io/2014/10/18/like-microblog-mysql-table-design</guid>
+      <content:encoded><![CDATA[<hr />
 
 <p>下午需求做完了，刚好其他同事在搞方案评审。做的是一个新的sns产品。所以去旁听了会。sns中涉及到好友动态查看，以及互粉关系链存储，评论这些功能。由于是节目订阅类， 产品的功能点有很多跟微博类似。之前使用公司的架构同样可以扛住海量用户的请求冲击。但是leader的想法是追求创业团队的小而美，快速迭代上线。用公司的框架太重了， 调用链路太长，开发和维护的成本都比较高。所以架构上采用了通用的lamp组件进行开发。问题来了，挖掘机哪家强.......哦，说错了，是mysql中的数据结构如何组织才能够支持 快速的查询和数据层的无障碍扩容。</p>
 
 <hr />
 
-<p>关系链中因为有关注，有粉丝，最简单粗暴的方式是把这些关系都存成一张表。表属性设置为fromid，toid，timestamp。fromid代表发起关注者的id，toid表示被关注对象的id。 我们暂时称这张表为A吧。如果要查一个人关注了谁，<pre><code>select toid from tablename where fromid=XXXX</code></pre>就行。如果要查一个人的粉丝是谁，</p>
+<p>关系链中因为有关注，有粉丝，最简单粗暴的方式是把这些关系都存成一张表。表属性设置为fromid，toid，timestamp。fromid代表发起关注者的id，toid表示被关注对象的id。 我们暂时称这张表为A吧。如果要查一个人关注了谁，<pre><code>select toid from tablename where fromid=XXXX</code></pre>就行。如果要查一个人的粉丝是谁<pre><code>select fromid from tablename where toid=XXXX</code></pre>就可以检索出来</p>
 
 <hr />
 
@@ -71,7 +499,12 @@ tags:
 
 <hr />
 
-<p>SNS中涉及到另外一个问题，好友动态如何快速的拉取。这里有pull和push两种方式。pull主要是采用拉取的方式。用户每发表一个好友动态，都会插入到一个动态表中，我们叫做feeds吧。feeds的表结构设置为 <pre><code>author，content，timestamp,extra msg</code></pre>每次拉取的时候需要 <pre><code>select * from feeds where feeds.author in(关注列表)</code></pre> pull方案既要查询关系链，又要根据关系链去动态列表中过滤出关注对象的动态。做排序。检索的时候可以根据在增量feeds表中做数据检索。 这种方式实现简单，可以实现业务需求，但是操作时间复杂度达到O(M)*O(N),M是动态表中的记录长度，N是关注列表的长度。</p>
+<p>SNS中涉及到另外一个问题，好友动态如何快速的拉取。这里有pull和push两种方式。pull主要是采用拉取的方式。用户每发表一个好友动态，都会插入到一个动态表中，我们叫做feeds吧。feeds的表结构设置为 <pre><code>author，content，timestamp,extra msg</code></pre>每次拉取的时候需要</p>
+
+<pre><code>select * from feeds where feeds.author in(关注列表)</code></pre>
+
+
+<p>pull方案既要查询关系链，又要根据关系链去动态列表中过滤出关注对象的动态。做排序。检索的时候可以根据在增量feeds表中做数据检索。 这种方式实现简单，可以实现业务需求，但是操作时间复杂度达到O(M)*O(N),M是动态表中的记录长度，N是关注列表的长度。</p>
 
 <hr />
 
