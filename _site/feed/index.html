@@ -4,17 +4,530 @@
         xmlns:atom="http://www.w3.org/2005/Atom"
   >
   <channel>
-    <title>chriswei</title>
+    <title>ftom</title>
     <link href="http://192.168.73.128:4000/feed/" rel="self" />
     <link href="http://dssysway.github.io" />
-    <lastBuildDate>2017-01-25T23:18:47-06:00</lastBuildDate>
+    <lastBuildDate>2017-01-30T20:41:39-06:00</lastBuildDate>
     <webMaster>linuxserverlover@gmail.com</webMaster>
+    
+    <item>
+      <title>thinkphp框架适配修改.</title>
+      <link href="http://192.168.73.128:4000/2017/01/29/ThinkPHP%E6%A1%86%E6%9E%B6%E9%80%82%E9%85%8D%E4%BF%AE%E6%94%B9%E8%AE%B0%E5%BD%95/"/>
+      <pubDate>2017-01-29T00:00:00-06:00</pubDate>
+      <author>ftom</author>
+      <guid>http://192.168.73.128:4000/2017/01/29/ThinkPHP框架适配修改记录</guid>
+      <content:encoded><![CDATA[<hr />
+
+<p>最近项目需要使用php开发，php开发中比较流行的业务框架有Laravel, yii, CakePHP.
+最后决定使用ThinkPhp的原因是上述三种并没有用过,为了支持国产就直接ThinkPHP
+搞起了。裸用php同样可以完成业务开发。但是业务上涉及到两三位后台同学
+一起开发项目，时间上也比较紧.因此有必要借助框架约束来统一后台开发行为，
+另外可以方便借助框架提供的路由，安全配置，ORM等通用功能提高研发效率
+本文讨论的ThinkPHP仅限于3.2版本.</p>
+
+<hr />
+
+<p>ThinkPHP的代码非常简洁，基本上对于拥有入门级别的php开发都能看得懂。
+改起来相对方便。在业务开发过程中，笔者发现PHP中的某些地方并不能完全满足
+项目开发的需求，因此在参照内部系统的基础上对框架代码进行了补充修改。
+所做修改已经在线上顺利跑过了。下面把修改点罗列下，为以后的项目做下记录
+和经验积累.</p>
+
+<hr />
+
+<h3>日志api的修整</h3>
+
+<p>ThinkPHP 提供了Log::record()的方法，官方建议使用该方法来记录错误日志，
+该方法会将日志写入到内存中，在请求结束的回调中执行写磁盘存文件或者db操作。
+但是业务开发过程中，日志信息根据日志的产生来源分为以下四种：</p>
+
+<ul>
+<li>用户行为日志</li>
+<li>业务系统日志</li>
+<li>统计日志</li>
+<li>服务器行为日志</li>
+</ul>
+
+
+<p>用户行为日志通常跟具体的用户ID关联在一起，用来描述用户行为产生的关联结果。
+现网用户投诉信息大多数从该类型的日志加以筛选和跟踪.在游戏后台系统中
+这类日志通常会专门存储起来方便请求关键上下文保存，叫做tlog
+业务系统日志通常作为用户行为日志的补充，更多的是关联请求接口的行为。
+通常可以记录业务系统各种异常或者错误情况
+统计日志用于多种统计行为，类似于接口请求耗时，在线人数，访问人数等业务系统指标
+服务器行为日志用于记录跟业务逻辑无关的日志行为，更多记录的是业务系统与
+操作系统发生关联部分的日志信息。类似于进程的CPU占用，内存占用，共享内存占用，
+进程重启，reload，升级等日志信息。</p>
+
+<p>线上的日志系统最好兼顾以下几个点：</p>
+
+<ol>
+<li>最好日志系统可以做到支持上述日志的分类的打印，</li>
+<li>日志信息打印的时候最好跟代码上下文关联起来方便问题定位,</li>
+<li>日志信息最好能够打标签，像Android那样打个tag来区分某些日志信息</li>
+<li>日志信息最好能够区分打印级别，做到可配置化</li>
+</ol>
+
+
+<p>ThinkPHP除了满足第四点外，并不支持其他三点。因此对日志api做了修改以支持
+上述三点, 同时满足根据日志来源区分打印。下面贴主要代码:</p>
+
+<p><figure class="highlight"><pre><code class="language-php" data-lang="php"><span></span>    <span class="o">&lt;?</span><span class="nx">php</span>
+    <span class="k">function</span> <span class="nf">GET_CODE_INFO</span><span class="p">()</span>
+    <span class="p">{</span><br/>
+        <span class="nv">$debugInfo</span> <span class="o">=</span> <span class="nb">debug_backtrace</span><span class="p">();</span>
+        <span class="k">if</span> <span class="p">(</span><span class="nb">isset</span><span class="p">(</span><span class="nv">$debugInfo</span><span class="p">))</span> <span class="p">{</span><br/>
+            <span class="nv">$fileLocation</span> <span class="o">=</span> <span class="nv">$debugInfo</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;file&#39;</span><span class="p">];</span>
+            <span class="nv">$fileName</span> <span class="o">=</span> <span class="nb">strrchr</span><span class="p">(</span><span class="nv">$fileLocation</span><span class="p">,</span> <span class="s1">&#39;/&#39;</span><span class="p">);</span>
+            <span class="k">return</span> <span class="nv">$fileName</span> <span class="o">.</span> <span class="s2">&quot;:&quot;</span> <span class="o">.</span>
+                <span class="nv">$debugInfo</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;line&#39;</span><span class="p">]</span> <span class="o">.</span> <span class="s2">&quot; | &quot;</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="sd">/<strong></span>
+<span class="sd">     * SVR LOG define</span>
+<span class="sd">     * @param [type] $msg [description]</span>
+<span class="sd">     */</span>
+    <span class="k">function</span> <span class="nf">SVRLOG_WARN</span><span class="p">(</span><span class="nv">$msg</span><span class="p">,</span> <span class="nv">$tag</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="p">{</span><br/>
+        <span class="k">if</span> <span class="p">(</span><span class="k">empty</span><span class="p">(</span><span class="nv">$msg</span><span class="p">))</span> <span class="k">return</span><span class="p">;</span>
+        <span class="nx">Log</span><span class="o">::</span><span class="na">myRecord</span><span class="p">(</span><span class="s1">&#39;svr&#39;</span><span class="p">,</span> <span class="nx">GET_CODE_INFO</span><span class="p">()</span> <span class="o">.</span> <span class="nv">$msg</span><span class="p">,</span> <span class="nx">Log</span><span class="o">::</span><span class="na">WARN</span><span class="p">,</span> <span class="nv">$tag</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">function</span> <span class="nf">SVRLOG_ERR</span><span class="p">(</span><span class="nv">$msg</span><span class="p">,</span> <span class="nv">$tag</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="p">{</span><br/>
+        <span class="k">if</span> <span class="p">(</span><span class="k">empty</span><span class="p">(</span><span class="nv">$msg</span><span class="p">))</span> <span class="k">return</span><span class="p">;</span>
+        <span class="nx">Log</span><span class="o">::</span><span class="na">myRecord</span><span class="p">(</span><span class="s1">&#39;svr&#39;</span><span class="p">,</span> <span class="nx">GET_CODE_INFO</span><span class="p">()</span> <span class="o">.</span> <span class="nv">$msg</span><span class="p">,</span> <span class="nx">Log</span><span class="o">::</span><span class="na">ERR</span><span class="p">,</span> <span class="nv">$tag</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="sd">/</strong></span>
+<span class="sd">    * [USR LOG  define</span>
+<span class="sd">    * @param [type] $msg [description]</span>
+<span class="sd">    * @param [type] $tag [description]</span>
+<span class="sd">    <em>/</span>
+    <span class="k">function</span> <span class="nf">USRLOG_WARN</span><span class="p">(</span><span class="nv">$msg</span><span class="p">,</span> <span class="nv">$tag</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="p">{</span><br/>
+        <span class="k">if</span> <span class="p">(</span><span class="k">empty</span><span class="p">(</span><span class="nv">$msg</span><span class="p">))</span> <span class="k">return</span><span class="p">;</span>
+        <span class="nx">Log</span><span class="o">::</span><span class="na">myRecord</span><span class="p">(</span><span class="s1">&#39;user&#39;</span><span class="p">,</span> <span class="nx">GET_CODE_INFO</span><span class="p">()</span> <span class="o">.</span> <span class="nv">$msg</span><span class="p">,</span> <span class="nx">Log</span><span class="o">::</span><span class="na">WARN</span><span class="p">,</span> <span class="nv">$tag</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">function</span> <span class="nf">USRLOG_ERR</span><span class="p">(</span><span class="nv">$msg</span><span class="p">,</span> <span class="nv">$tag</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="p">{</span><br/>
+        <span class="k">if</span> <span class="p">(</span><span class="k">empty</span><span class="p">(</span><span class="nv">$msg</span><span class="p">))</span> <span class="k">return</span><span class="p">;</span>
+        <span class="nx">Log</span><span class="o">::</span><span class="na">myRecord</span><span class="p">(</span><span class="s1">&#39;user&#39;</span><span class="p">,</span> <span class="nx">GET_CODE_INFO</span><span class="p">()</span> <span class="o">.</span> <span class="nv">$msg</span><span class="p">,</span> <span class="nx">Log</span><span class="o">::</span><span class="na">ERR</span><span class="p">,</span> <span class="nv">$tag</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="sd">/**</span>
+<span class="sd">    * [STATIS LOG  define</span>
+<span class="sd">    * @param [type] $msg [description]</span>
+<span class="sd">    * @param [type] $tag [description]</span>
+<span class="sd">    </em>/</span>
+    <span class="k">function</span> <span class="nf">STATISLOG_WARN</span><span class="p">(</span><span class="nv">$msg</span><span class="p">,</span> <span class="nv">$tag</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="p">{</span><br/>
+        <span class="k">if</span> <span class="p">(</span><span class="k">empty</span><span class="p">(</span><span class="nv">$msg</span><span class="p">))</span> <span class="k">return</span><span class="p">;</span>
+        <span class="nx">Log</span><span class="o">::</span><span class="na">myRecord</span><span class="p">(</span><span class="s1">&#39;statis&#39;</span><span class="p">,</span> <span class="nx">GET_CODE_INFO</span><span class="p">()</span> <span class="o">.</span> <span class="nv">$msg</span><span class="p">,</span> <span class="nx">Log</span><span class="o">::</span><span class="na">WARN</span><span class="p">,</span> <span class="nv">$tag</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">function</span> <span class="nf">STATISLOG_ERR</span><span class="p">(</span><span class="nv">$msg</span><span class="p">,</span> <span class="nv">$tag</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="p">{</span><br/>
+        <span class="k">if</span> <span class="p">(</span><span class="k">empty</span><span class="p">(</span><span class="nv">$msg</span><span class="p">))</span> <span class="k">return</span><span class="p">;</span>
+        <span class="nx">Log</span><span class="o">::</span><span class="na">myRecord</span><span class="p">(</span><span class="s1">&#39;statis&#39;</span><span class="p">,</span> <span class="nx">GET_CODE_INFO</span><span class="p">()</span> <span class="o">.</span> <span class="nv">$msg</span><span class="p">,</span> <span class="nx">Log</span><span class="o">::</span><span class="na">ERR</span><span class="p">,</span> <span class="nv">$tag</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="cp">?&gt;</span><span class="x"></span></code></pre></figure></p>
+
+<hr />
+
+<p>上述代码提供了统计日志，服务器日志，以及用户日志的调用接口.
+在record实现的基础上增加了日志打印与代码位置的关联信息，
+日志来源信息（svr, user, statis）。同时支持用户输入tag
+下面来看看myRecord部分的修改</p>
+
+<p><figure class="highlight"><pre><code class="language-php" data-lang="php"><span></span>    <span class="o">&lt;?</span><span class="nx">php</span>
+    <span class="sd">/<em>*</span>
+<span class="sd">     * [myRecord 自定义日志记录]</span>
+<span class="sd">     * @param  [type] $message [description]</span>
+<span class="sd">     * @param  [type] $level   [description]</span>
+<span class="sd">     * @param  [type] $tag     [description]</span>
+<span class="sd">     * @param  [type] $record  [description]</span>
+<span class="sd">     * @return [type]          [description]</span>
+<span class="sd">     </em>/</span>
+    <span class="k">static</span> <span class="k">function</span> <span class="nf">myRecord</span><span class="p">(</span><span class="nv">$type</span><span class="p">,</span> <span class="nv">$message</span><span class="p">,</span> <span class="nv">$level</span><span class="o">=</span><span class="nx">self</span><span class="o">::</span><span class="na">ERR</span><span class="p">,</span> <span class="nv">$tag</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="nv">$record</span><span class="o">=</span><span class="nx">fasle</span><span class="p">)</span>
+    <span class="p">{</span><br/>
+        <span class="k">switch</span><span class="p">(</span><span class="nv">$type</span><span class="p">)</span>
+        <span class="p">{</span><br/>
+            <span class="k">case</span> <span class="s1">&#39;user&#39;</span><span class="o">:</span>
+                <span class="p">{</span><br/>
+                    <span class="k">if</span><span class="p">(</span><span class="nv">$record</span> <span class="o">||</span> <span class="k">false</span> <span class="o">!==</span> <span class="nb">strpos</span><span class="p">(</span><span class="nx">C</span><span class="p">(</span><span class="s1">&#39;USR_LOG_LEVEL&#39;</span><span class="p">),</span><span class="nv">$level</span><span class="p">))</span>
+                    <span class="p">{</span><br/>
+                        <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="k">empty</span><span class="p">(</span><span class="nv">$tag</span><span class="p">))</span> <span class="nx">self</span><span class="o">::</span><span class="nv">$userLog</span><span class="p">[]</span> <span class="o">=</span> <span class="s2">&quot;[{ </span><span class="si">$tag</span><span class="s2">}] [{ </span><span class="si">$level</span><span class="s2">}]: { </span><span class="si">$message</span><span class="s2">}</span><span class="se">\r\n</span><span class="s2">&quot;</span><span class="p">;</span>
+                        <span class="k">else</span> <span class="nx">self</span><span class="o">::</span><span class="nv">$userLog</span><span class="p">[]</span> <span class="o">=</span> <span class="s2">&quot;[{ </span><span class="si">$level</span><span class="s2">}]: { </span><span class="si">$message</span><span class="s2">}</span><span class="se">\r\n</span><span class="s2">&quot;</span><span class="p">;</span>
+                    <span class="p">}</span>
+                    <span class="k">break</span><span class="p">;</span>
+                <span class="p">}</span>
+            <span class="k">case</span> <span class="s1">&#39;svr&#39;</span><span class="o">:</span>
+                <span class="p">{</span><br/>
+                    <span class="k">if</span><span class="p">(</span><span class="nv">$record</span> <span class="o">||</span> <span class="k">false</span> <span class="o">!==</span> <span class="nb">strpos</span><span class="p">(</span><span class="nx">C</span><span class="p">(</span><span class="s1">&#39;SVR_LOG_LEVEL&#39;</span><span class="p">),</span><span class="nv">$level</span><span class="p">))</span> <span class="p">{</span><br/>
+                        <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="k">empty</span><span class="p">(</span><span class="nv">$tag</span><span class="p">))</span>
+                            <span class="nx">self</span><span class="o">::</span><span class="nv">$svrLog</span><span class="p">[]</span> <span class="o">=</span> <span class="s2">&quot;[{ </span><span class="si">$tag</span><span class="s2">}] [{ </span><span class="si">$level</span><span class="s2">}]: { </span><span class="si">$message</span><span class="s2">}</span><span class="se">\r\n</span><span class="s2">&quot;</span><span class="p">;</span>
+                        <span class="k">else</span>
+                            <span class="nx">self</span><span class="o">::</span><span class="nv">$svrLog</span><span class="p">[]</span> <span class="o">=</span> <span class="s2">&quot;{ </span><span class="si">$level</span><span class="s2">}: { </span><span class="si">$message</span><span class="s2">}</span><span class="se">\r\n</span><span class="s2">&quot;</span><span class="p">;</span>
+                    <span class="p">}</span>
+                    <span class="k">break</span><span class="p">;</span>
+                <span class="p">}</span>
+            <span class="k">case</span> <span class="s1">&#39;statis&#39;</span><span class="o">:</span>
+                <span class="p">{</span><br/>
+                    <span class="k">if</span><span class="p">(</span><span class="nv">$record</span> <span class="o">||</span> <span class="k">false</span> <span class="o">!==</span> <span class="nb">strpos</span><span class="p">(</span><span class="nx">C</span><span class="p">(</span><span class="s1">&#39;STATIS_LOG_LEVEL&#39;</span><span class="p">),</span><span class="nv">$level</span><span class="p">))</span> <span class="p">{</span><br/>
+                        <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="k">empty</span><span class="p">(</span><span class="nv">$tag</span><span class="p">))</span> <span class="nx">self</span><span class="o">::</span><span class="nv">$statisLog</span><span class="p">[]</span> <span class="o">=</span> <span class="s2">&quot;[{ </span><span class="si">$tag</span><span class="s2">}] [{ </span><span class="si">$level</span><span class="s2">}]: { </span><span class="si">$message</span><span class="s2">}</span><span class="se">\r\n</span><span class="s2">&quot;</span><span class="p">;</span>
+                        <span class="k">else</span>
+                            <span class="nx">self</span><span class="o">::</span><span class="nv">$statisLog</span><span class="p">[]</span> <span class="o">=</span> <span class="s2">&quot;[{ </span><span class="si">$level</span><span class="s2">}]: { </span><span class="si">$message</span><span class="s2">}</span><span class="se">\r\n</span><span class="s2">&quot;</span><span class="p">;</span>
+                    <span class="p">}</span>
+                    <span class="k">break</span><span class="p">;</span>
+                <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="cp">?&gt;</span><span class="x"></span></code></pre></figure></p>
+
+<hr />
+
+<p>上述修改主要是把日志信息根据日志来源存储到对应的内存结构中，根据日志级别拼接
+级别和tag.日志信息msg在传入的时候就已经拼接了打印日志时所在的代码文件和位置了.
+当然打印日志时的代码位置信息为了调用接口的便利性直接从堆栈里取得，这里是否有性能
+上的问题还需要做进一步的观察处理
+ThinkPHP在请求执行完后会回调Log::save接口，只要在save接口里对上述的内存日志
+结构做下判断，有数据就存到不同的日志文件里即可。</p>
+
+<p>业务逻辑在打印日志的时候，只要类似于下面这样调用，就能获得足够的日志信息</p>
+
+<p><figure class="highlight"><pre><code class="language-php" data-lang="php"><span></span>    <span class="o">&lt;?</span><span class="nx">php</span>
+    <span class="nx">SVRLOG_ERR</span><span class="p">(</span><span class="s1">&#39;auction status[online-&gt;onsale], auctionId： &#39;</span> <span class="o">.</span> <span class="nv">$auction</span><span class="p">[</span><span class="s1">&#39;auction_id&#39;</span><span class="p">],</span> <span class="s1">&#39;auction&#39;</span><span class="p">);</span>
+    <span class="cp">?&gt;</span><span class="x"></span></code></pre></figure></p>
+
+<p>打印日志结果如下所示：</p>
+
+<pre><code>[ 2017-01-28 21:59:17 ] 180.153.201.79
+/yiku/JDOnline/Home/order/getLotOrders?userId%253D587799808d
+226 ERR: /common.php:32 | errno[-100] errmsg[input error ]
+</code></pre>
+
+<hr />
+
+<h3>业务代码层级调整</h3>
+
+<p>ThinkPHP中提供了MVC模型.我们的项目主要提供rest api，因此用不到V层。
+ThinkPHP中Model主要负责封装db操作，与DB发生交互。ORM的工作也在Model中
+做了，操作DB很方便，而Controller主要处理业务逻辑。在项目复杂度，项目规模
+不大的情况下可以将所有的业务逻辑都写在Controller里.
+但是项目规模大了之后这种方式就不好使了。因此需要独立出来一个Service层专门
+处理业务逻辑，Controller 专门负责业务请求转发和简单的数据操作。
+这种代码层级规划的好处有以下几点：</p>
+
+<ul>
+<li>流转结构清晰，Controller里获取Service的处理句柄，调用Service里的方法并获取
+结果，根据返回结果再决定下一步执行流程，不涉及具体的实现细节。方便开发团队
+在Controller里就能获得请求流转的主脉络</li>
+<li>提高代码复用度。Service负责实际的数据处理.项目主调除了普通用户，可能还来自
+内部管理系统，以及网页端。面对各种端在独立出各自的消息路由层的时候，可以方便
+的组合Service的调用来完成接口的调用。将实现独立出来一层而不是与消息路由杂糅在
+一起，提高了代码的复用。降低了耦合度</li>
+</ul>
+
+
+<hr />
+
+<p>框架上补充了Service的基类，要实现Service的时候只要继承基类即可。
+目前基类提供的基础能力是根据子类里配置的过滤字段数组自动过滤敏感字段。
+这点在所有接口里几乎都要被用到
+下面是Service的基类实现</p>
+
+<p><figure class="highlight"><pre><code class="language-php" data-lang="php"><span></span>    <span class="o">&lt;?</span><span class="nx">php</span>
+    <span class="k">class</span> <span class="nc">Service</span>
+    <span class="p">{</span><br/>
+        <span class="k">protected</span> <span class="nv">$dataFilterOption</span> <span class="o">=</span> <span class="k">array</span><span class="p">();</span>
+        <span class="k">public</span> <span class="k">function</span> <span class="nf">dataFilter</span><span class="p">(</span><span class="o">&amp;</span><span class="nv">$data</span><span class="p">){</span><br/>
+          <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="k">empty</span><span class="p">(</span><span class="nv">$this</span><span class="o">-&gt;</span><span class="na">dataFilterOption</span><span class="p">)){</span><br/>
+            <span class="k">foreach</span><span class="p">(</span><span class="nv">$data</span> <span class="k">as</span> <span class="nv">$key</span><span class="o">=&gt;</span><span class="nv">$value</span><span class="p">)</span> <span class="p">{</span><br/>
+                <span class="k">if</span><span class="p">(</span><span class="nb">is_array</span><span class="p">(</span><span class="nv">$value</span><span class="p">))</span> <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">dataFilter</span><span class="p">(</span><span class="nv">$data</span><span class="p">[</span><span class="nv">$key</span><span class="p">]);</span>
+                <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="nb">is_numeric</span><span class="p">(</span><span class="nv">$key</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="nb">in_array</span><span class="p">(</span><span class="nv">$key</span><span class="p">,</span> <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">dataFilterOption</span><span class="p">))</span> <span class="nb">unset</span><span class="p">(</span><span class="nv">$data</span><span class="p">[</span><span class="nv">$key</span><span class="p">]);</span>
+            <span class="p">}</span>
+          <span class="p">}</span>
+            <span class="k">return</span> <span class="nv">$data</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">};</span>
+    <span class="cp">?&gt;</span><span class="x"></span></code></pre></figure></p>
+
+<hr />
+
+<p>使用的时候只要在子类的dataFilterOption 数组里配置需要过滤的db敏感字段
+Controller回包的时候调用dataFilter即可
+获取Service处理对象的时候要易于使用，笔者独立了一个Util文件夹，以单例的模式
+来获取Service的对象.废话不多说了上代码：</p>
+
+<p><figure class="highlight"><pre><code class="language-php" data-lang="php"><span></span>    <span class="o">&lt;?</span><span class="nx">php</span>
+    <span class="k">namespace</span> <span class="nx">Home\Util</span><span class="p">;</span>
+    <span class="k">use</span> <span class="nx">Tink\Log</span><span class="p">;</span>
+    <span class="k">use</span> <span class="nx">Home\Services</span><span class="p">;</span>
+    <span class="k">class</span> <span class="nc">ServiceUtil</span><span class="p">{</span><br/>
+        <span class="sd">/<em>*</span>
+<span class="sd">         * 取得Service类实例</span>
+<span class="sd">         * @static</span>
+<span class="sd">         * @param   $[name] [&lt;service名字&gt;]</span>
+<span class="sd">         * @access public</span>
+<span class="sd">         * @return mixed</span>
+<span class="sd">         </em>/</span>
+        <span class="k">static</span> <span class="k">function</span> <span class="nf">getInstance</span><span class="p">(</span><span class="nv">$name</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span> <span class="p">{</span><br/>
+                <span class="k">static</span> <span class="nv">$<em>instance</span> <span class="o">=</span>  <span class="k">array</span><span class="p">();</span>
+                <span class="nv">$service_name</span> <span class="o">=</span>  <span class="nv">$name</span><span class="p">;</span>
+                <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="nb">isset</span><span class="p">(</span><span class="nv">$</em>instance</span><span class="p">[</span><span class="nv">$service_name</span><span class="p">])){</span><br/>
+                    <span class="nv">$class</span> <span class="o">=</span> <span class="s1">&#39;Home\Services\&#39;</span><span class="o">.</span><span class="nv">$service_name</span><span class="p">;</span>
+                    <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="nb">class_exists</span><span class="p">(</span><span class="nv">$class</span><span class="p">,</span><span class="k">false</span><span class="p">)){</span><br/>
+                        <span class="nv">$obj</span> <span class="o">=</span> <span class="k">new</span> <span class="nv">$class</span><span class="p">();</span>
+                        <span class="nv">$<em>instance</span><span class="p">[</span><span class="nv">$service_name</span><span class="p">]</span> <span class="o">=</span> <span class="nv">$obj</span><span class="p">;</span>
+                    <span class="p">}</span>
+                    <span class="k">else</span>
+                    <span class="p">{</span><br/>
+                        <span class="nx">\Think\Log</span><span class="o">::</span><span class="na">record</span><span class="p">(</span><span class="s1">&#39;service instance not exists&#39;</span><span class="o">.</span><span class="nv">$service_name</span><span class="p">,</span><span class="s1">&#39;ERR&#39;</span><span class="p">);</span>
+                    <span class="p">}</span>
+                <span class="p">}</span>
+                <span class="k">return</span> <span class="nv">$</em>instance</span><span class="p">[</span><span class="nv">$service_name</span><span class="p">];</span>
+            <span class="p">}</span>
+    <span class="p">};</span>
+    <span class="cp">?&gt;</span><span class="x"></span></code></pre></figure></p>
+
+<p>获取Service子类实例的时候只要输入Service类名字就可以获得实例了</p>
+
+<p><figure class="highlight"><pre><code class="language-php" data-lang="php"><span></span>    <span class="o">&lt;?</span><span class="nx">php</span>
+    <span class="nv">$handler</span> <span class="o">=</span> <span class="nx">ServiceUtil</span><span class="o">::</span><span class="na">getInstance</span><span class="p">(</span><span class="s2">&quot;AuctionService&quot;</span><span class="p">);</span>
+    <span class="cp">?&gt;</span><span class="x"></span></code></pre></figure></p>
+
+<p>这种处理方式方便业务逻辑开发的时候获取Service子类实例.
+不过这种方式并不具备真正意义上的单例作用。意即减少Service对象的
+创建.这跟php本身的生命周期管理有管理。
+php作为一门web脚本语言。代码的生命周期只存在于单次的请求中。
+php中定义的静态变量在请求结束之后就会被清理回收了。上述的单例模式
+仅限于在单次请求中涉及多次对于同一个Service调用的时候减少该Service的
+重复初始化。</p>
+
+<hr />
+
+<h3>错误码管理统一</h3>
+
+<p>业务处理的时候，对于致命错误的处理采用抛出异常并在主干路径上
+捕捉异常的处理方式。示例代码如下：</p>
+
+<p><figure class="highlight"><pre><code class="language-php" data-lang="php"><span></span>    <span class="o">&lt;?</span><span class="nx">php</span>
+    <span class="k">try</span> <span class="p">{</span><br/>
+        <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">init</span><span class="p">(</span><span class="nv">$userId</span><span class="p">,</span> <span class="nv">$auctionId</span><span class="p">,</span> <span class="nv">$lotId</span><span class="p">,</span> <span class="nv">$price</span><span class="p">,</span> <span class="nv">$username</span><span class="p">);</span>
+        <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">beforeBid</span><span class="p">();</span>
+        <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">doBid</span><span class="p">();</span>
+        <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">afterBid</span><span class="p">();</span>
+    <span class="p">}</span>
+    <span class="k">catch</span> <span class="p">(</span><span class="nx">Exception</span> <span class="nv">$e</span><span class="p">)</span>
+    <span class="p">{</span><br/>
+       <span class="nx">deal_exception</span><span class="p">(</span><span class="nv">$e</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="cp">?&gt;</span><span class="x"></span></code></pre></figure></p>
+
+<p>通过上述方式避免了在关键路径上的嵌套调用过深的时候，需要层层返回错误
+带来代码维护上的压力。这种抛异常的方式需要记住
+抛出的原始位置在哪里。因此笔者重写了Exception的方法。Exception携带
+一个常量描述的错误码，该错误码配置在一个专门的错误码文件里。通过
+错误码可以在配置里查找到错误描述。Exception还可以携带外带的上下文信息
+然后与配置里写死的错误描述拼接在一起返回给客户端并记录日志。
+这些工作都在deal_exception里处理了。deal_exception还会获取到抛出异常时的
+堆栈信息打印抛出异常的代码文件和位置到日志文件里头，方便快速查找异常抛出位置
+错误码统一维护很有必要，避免了团队使用被占用的错误码，需要改错误描述的时候
+只需要动配置就行了。通过统一配置的方式提高了代码的内聚性</p>
+
+<p>下面贴下deal_exception的实现</p>
+
+<p><figure class="highlight"><pre><code class="language-php" data-lang="php"><span></span>    <span class="o">&lt;?</span><span class="nx">php</span>
+    <span class="k">function</span> <span class="nf">deal_exception</span><span class="p">(</span><span class="nv">$e</span><span class="p">){</span><br/>
+        <span class="nv">$msg</span> <span class="o">=</span> <span class="nv">$e</span><span class="o">-&gt;</span><span class="na">getMessage</span><span class="p">();</span>
+        <span class="nv">$trace</span> <span class="o">=</span> <span class="nv">$e</span><span class="o">-&gt;</span><span class="na">getTraceAsString</span><span class="p">();</span>
+        <span class="nv">$errno</span> <span class="o">=</span> <span class="nv">$e</span><span class="o">-&gt;</span><span class="na">getErrno</span><span class="p">();</span>
+        <span class="nx">Think\Log</span><span class="o">::</span><span class="na">record</span><span class="p">(</span><span class="nv">$trace</span><span class="p">,</span><span class="s1">&#39;ERR&#39;</span><span class="p">);</span>
+        <span class="nx">reply_error</span><span class="p">(</span><span class="nv">$errno</span><span class="p">,</span> <span class="nv">$msg</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">function</span> <span class="nf">reply_error</span><span class="p">(</span><span class="nv">$err</span><span class="p">,</span> <span class="nv">$msg</span><span class="p">)</span>
+    <span class="p">{</span><br/>
+        <span class="nv">$config_msg</span> <span class="o">=</span> <span class="nx">C</span><span class="p">(</span><span class="nv">$err</span> <span class="o">.</span> <span class="s1">&#39;.ERRMSG&#39;</span><span class="p">);</span>
+        <span class="nv">$err_msg</span> <span class="o">=</span> <span class="nb">isset</span><span class="p">(</span><span class="nv">$config_msg</span><span class="p">)</span> <span class="o">?</span> <span class="nv">$config_msg</span> <span class="o">.</span> <span class="s2">&quot; &quot;</span> <span class="o">.</span> <span class="nv">$msg</span> <span class="o">:</span> <span class="nv">$config_msg</span><span class="p">;</span>
+        <span class="nv">$data</span> <span class="o">=</span> <span class="k">array</span><span class="p">();</span>
+        <span class="nv">$data</span><span class="p">[</span><span class="s1">&#39;errno&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nx">C</span><span class="p">(</span><span class="nv">$err</span> <span class="o">.</span> <span class="s1">&#39;.ERRNO&#39;</span><span class="p">);</span>
+        <span class="nv">$data</span><span class="p">[</span><span class="s1">&#39;errmsg&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nv">$err_msg</span><span class="p">;</span>
+        <span class="nv">$log</span> <span class="o">=</span> <span class="nb">sprintf</span><span class="p">(</span><span class="s2">&quot;errno[%d] errmsg[%s]&quot;</span><span class="p">,</span> <span class="nv">$data</span><span class="p">[</span><span class="s1">&#39;errno&#39;</span><span class="p">],</span> <span class="nv">$data</span><span class="p">[</span><span class="s1">&#39;errmsg&#39;</span><span class="p">]);</span>
+        <span class="nx">SVRLOG_ERR</span><span class="p">(</span><span class="nv">$log</span><span class="p">);</span>
+        <span class="k">echo</span> <span class="nb">json_encode</span><span class="p">(</span><span class="nv">$data</span><span class="p">);</span>
+        <span class="k">exit</span><span class="p">();</span>
+    <span class="p">}</span>
+    <span class="cp">?&gt;</span><span class="x"></span></code></pre></figure></p>
+
+<p>相关修整代码等项目开发完毕之后再附上链接</p>
+]]></content:encoded>
+    </item>
+    
+    <item>
+      <title>2016年终总结.</title>
+      <link href="http://192.168.73.128:4000/2017/01/26/%E5%B9%B4%E7%BB%88%E6%80%BB%E7%BB%93_2016/"/>
+      <pubDate>2017-01-26T00:00:00-06:00</pubDate>
+      <author>ftom</author>
+      <guid>http://192.168.73.128:4000/2017/01/26/年终总结_2016</guid>
+      <content:encoded><![CDATA[<p>2016已经过去了，明儿就要过年了。过个几天2017也要
+过去1/12了。时间就是这么快，年
+末总免不了一番感慨。之所以没有选择在17年元旦做这篇
+年终总结，是因为这一年经历了挺多事，不知道如何去梳理
+。也算是喜忧虑参半一路走过来了.想到哪就写到哪吧。</p>
+
+<hr />
+
+<p>15年12月24号，赶着国家16年缩减婚期的档口赶紧和媳妇把
+证领了。结束了长达一年的恋爱短跑。16年年初回家办酒了
+走完当地的婚俗才算真正过门。
+媳妇和我算是冥冥中注定的缘分。我们俩都是初四被父母押着
+来相亲的，也都是第一次相亲。她和我都是同个高中物理班的,
+只是高中时候我们谁都不认识谁。丈母娘曾经找过算命先生的
+算过，说未来的女婿离家不远，人微胖也不高，老老实实一人。
+那天相亲看到我就觉得：嗯这下子对上了。鬼晓得我也是大学
+毕业后慢慢胖起来的。不过话说回来，媳妇性格挺好的，我们
+都有互补的地方。所以2016年感到最幸运的事就是遇到了对的
+人可以慢慢变老吧。</p>
+
+<hr />
+
+<p>15年年底的时候媳妇因为深圳报驾校考试周期长，给我老家报了
+一教练，是她以前学车的教练，据说资历很老，是少有的负责任的
+好教练。3月份的时候就被教练要求回去考科目一。从此开始了周末
+不断的往返深圳普宁的路程。还好高铁方便，来回加上地铁倒腾在
+路上的时间也就是6个小时而已。而且可以时不时回到家里见见爸妈，
+慢慢的体会到媳妇的良苦用心。教练的集合点在丈母娘家附近，
+每次返深，两位妈妈都备好各种好吃的家乡肉丸，排骨，粿条之类的
+让我带上深圳吃.上班的早上经常能够动动手就吃到家乡的好吃的。
+妈妈在我回深的时候总是让我带这带那，蔬菜水果瓜蔬。有的是亲自
+叮嘱人订做的肉丸，有的是自家菜地种的青菜，还有自家产的牛奶之类的。
+总恨不得我把整个冰箱都搬走。只是我比较愚笨，科目二练了20多次还是
+考不过，学车周期也因为只有周末往返和中途高考生插队墨迹到了
+年底。还在年底前过了科目三顺顺利的拿到驾照。完成了16年其中一个
+小目标。
+<img src="http://7xq3xt.com1.z0.glb.clouddn.com/xueche_changnei_20160424_051300.jpg" alt="驾照场内" /></p>
+
+<hr />
+
+<p>4月份回深的时候就想着要在深圳买个房子，一来到7月份来
+来公司三年了刚好可以贷50万出来凑首付，二来还是觉得钱贬值
+是个既定的事实，所以想尽快买个房子，以后有娃自住或者保值
+都可以，也算是在大城市有个地方可以落脚.周末不回家学车的日子
+开启了疯狂的看房之路。最开始的时候都是在知乎在百度上搜攻略
+看过来人买房。联系的是链家，只是都是套路，刚开始差点出手买了
+跟我年龄差不多的老旧楼梯房，只是卖家很强硬不愿意让价半分，
+还让我干等2小时，索性不买，中介则是一直在撮合，最后房子成交了
+比我当时的报价还高了6,7万.媳妇问是否后悔没拿下，我总觉得
+没有缘分也不值得后悔不后悔的。作为买方出钱的是我没必要在
+卖家面前装的跟个孙子求着买房.后面链家的中介给我留下了比较差
+的印象。此处略去不表。在房网上机缘巧合认识了个中原的老牌地产中介
+，老乡来的，对我蛮客气，办事也靠谱，经常从我们的角度考虑问题。
+而且在提供靠谱服务的同时还是以最低的中介费用给我们办的.
+后面我们差点以高于市场价出手泰华锦绣城的一套2楼鸡肋电梯房。
+业主很屌不肯让价，说我这房子现在确实不值这个价，但是
+你们要认同房价是会涨的，我要多拿未来要涨的这一部分，你们现在
+不买以后这个价还真买不到。我们合算半天最后还说帮助我们只给降价
+5万。那晚因为周五的缘故没有签，老婆一夜无眠，很是惶恐这个价格.
+所以隔天早上我就直接回绝不签了.</p>
+
+<hr />
+
+<p>最后我们在宝安上车盘老城区里买了个电梯房子。看上的时候也没
+纠结太多。因为看过太多盘了。个中优缺心理都有数，看中的当晚就
+想和业主谈价签了。业主也算实诚，双方并没有议价，业主也是出的
+小区盘同户型最低价了，五楼西南朝花园不吵，大户型实用面积高采光好
+房子格局也还行。感谢各种机缘巧合最后能选中一套合适的。这个过程很是
+艰辛，看中一套房到最后能够顺利以合适的价格成交，要做的功课实在太多，
+运气也占据了很大成分.作为屌丝阶层做个决定就是要各种慎之又慎，可选范围并
+不多，要侧重的因素太多了</p>
+
+<hr />
+
+<p>5月份的时候，岳父去了趟石家庄见亲兄弟，顺便想去北京走走，完成
+自己多年的愿想。我在北京读了四年书，总体还是蛮熟的。于是媳妇要求我给当导游，
+安排在北京2.5天 的行程。五一又是人员相对集中的地方.我直接订了天安门附近的
+小旅店，住宿条件一般，但是离天安门城楼也就是十几分钟的脚程。去南锣鼓巷
+和护国寺小吃店都非常近。几天的行程我们跑了北海，鸟巢和清华北邮。大多时候
+都是到很晚才回去，鸟巢基本没什么人了，清净夜里别有另一番风景。由于有滴滴
+的缘故出行非常方便。最惊艳的是去长城的时候，我们去到的时候以为要停止售票了。
+结果售票员说现在才五点，6:30才停止，于是开心的直接上了南城墙,当时
+天气偏冷,长城上人已经零零星星了，整个长城拍照的时候视野范围内都看不到游客
+，别有一番长城萧瑟的滋味。 老丈人很满意我的安排，回去后一直夸奖。
+当然很多时候都是刚好走运，各种巧合给赶上了，并非在我计划内.
+行程中期还抽空跟毕业三年未见的老同学整了顿烤羊腿。见面的时候感觉大家都
+褪去了稚嫩，开始变得成熟稳健了。
+<img src="http://7xq3xt.com1.z0.glb.clouddn.com/P60502-181824.jpg" alt="长城" /></p>
+
+<hr />
+
+<p>八月份签订完购房合同，趁着项目组空闲的时间，想趁机休了2周的婚假 .老婆子的婚假15年底回去
+办理婚姻安排，用掉了没法一起，这点挺对不起她的。刚好俊鸿从创业公司离职了，
+于是两人商量一同来趟大西北自驾出游.出行拼了两杭州来的妹子，和一台湾大叔。
+两妹子因为杭州G20 峰会的际会刚好有空出来玩，台湾大叔则是不愁生计的房东天南
+海北到处去.这次西宁青海自驾游大大拓展了我眼界.我知道了青藏大草原的开阔，见识
+到了平常只能在windows界面才能看到的大片草地，见识到了祖国聚宝盆柴达木盆地茶卡盐
+湖的白茫与粗犷的光洁，我看到大片的牛羊点缀草海天际像
+远方绽放的白色蒲公英。我吃到了青菜比牛羊肉还贵的饭店，顿顿牛羊肉不见腻歪的西北
+特色美食，见识到了清真大寺的圣洁和湟光大批的回族大叔和漂亮妹子。我体验到了
+旅行路上每天都是不一样的新鲜，以及人与人的信任和热情.当然西北行对自己也是
+一种突破，因为从不曾一个人坐过飞机来到从未到过的陌生的地方，只能做足大量攻略
+和检索来寻求行程的稳妥和安全感。路上最开始虽然天气不见好都是阴雨天，但是到达青海
+湖西北地却多日晴天.这是行程中最幸运的地方。唯一缺憾的是驾照没拿到,路很好飙车却
+没法开上租来的308s。下次自驾游该带着老婆孩子整个车队来了吧。
+<img src="http://7xq3xt.com1.z0.glb.clouddn.com/P60830-101512.jpg" alt="草地" />
+<img src="http://7xq3xt.com1.z0.glb.clouddn.com/P60828-193240.jpg" alt="美食" />
+<img src="http://7xq3xt.com1.z0.glb.clouddn.com/zijia_P60831-112612.jpg" alt="小伙伴" />
+<img src="http://7xq3xt.com1.z0.glb.clouddn.com/zijia_4210.JPG" alt="4120" /></p>
+
+<hr />
+
+<p>九月份走各种繁琐的买房手续流程，10月国庆的时候陪老妈回去了一趟桂林看
+外公外婆和大外公大外婆。桂林我在小学五年级寒假的时候来过一次，已经有十几年没
+来过了。在老妈的老家住了四五晚，乡下信号不好，跟清修差不多。每天做的事就是开着
+小车带着外公和老妈，小表妹们去探亲，去山上捡柴火，去摘菜和水果.老妈子很开心。
+我们在这里天天听着小桥流水，点着日光灯对着黝黑的大山听着外公吹牛。他年事已高，
+用桂林话讲他过去的牛逼经历，我虽然听不懂，但是只要点头安静倾听就够了.老婆子
+很喜欢这里的山野气息，早上喜欢早早拉着我在小乡村通往外面的水泥路上散步，两盘晨辉
+斜染，给早秋的稻谷，半高的甘蔗，黄豆和绿树抹上一层金黄，加上露水的点缀一闪一闪，
+这种山野的清新真心让人流连忘返。这次出行我第一次开车在路上走，还是很稳重的，
+得到了大家的一致好评。这个还是要感谢教练的悉心教导，虽然没过科二，但是开起来已经
+有自信和底气了。
+<img src="http://7xq3xt.com1.z0.glb.clouddn.com/P61004-072013.jpg" alt="晨散步" />
+<img src="http://7xq3xt.com1.z0.glb.clouddn.com/P61005-082050.jpg" alt="外公" /></p>
+
+<hr />
+
+<p>十一月份房子正式交接了，想着没钱装修，而且现在的房子也住的挺习惯的，所以想
+把房子出租了，顺便做个良心房东。年底恰逢租房淡季，放了一个月没人来租，来看的
+都没一个准信。随后降价500多主动在公司内部联系人，结果一看就订了.虽然房子偶尔有
+些需要修修补补的，但是租客也挺好说话的，整租一家子刚有娃，需要处理什么我们也是尽快处理。
+十一月份过了之后，老婆子有天突然告诉我怀孕了.这个消息来得相对突然。感觉这一年
+结婚，买房，学车，生娃这些事全给整一年里了。如果这么说的话2016算是人生的幸运年了
+。有缺憾的地方是年底背了个2星，被现任leader认为能力不足，技术热诚不够。
+年底算是因为这些压抑了一把。但人生不可能十全十美，留点缺憾给2017解决。</p>
+
+<hr />
+
+<p>早上和老婆子一起梳理了16年的收入，老婆子是达到了16年的收入目标了，我只完成了
+8成.根据现有收入能力评估了下，17年的目标有以下几个小点</p>
+
+<ul>
+<li>娃顺利健康的诞生。这个是最重要的</li>
+<li>升3，提高技术实力成为项目骨干，要不娃都养不起了。</li>
+<li>将欠款控制到某个阈值下。争取18年买车提上日程。</li>
+</ul>
+
+
+<hr />
+
+<p>感谢2016所有的际遇， 2017 为了家人，为了生活继续奋斗！
+付爸妈种的菜地,希望未来像这片菜地一样欣欣向荣，充满希望！
+<img src="http://7xq3xt.com1.z0.glb.clouddn.com/IMG_20170126_145835.jpg" alt="菜地" /></p>
+]]></content:encoded>
+    </item>
     
     <item>
       <title>话题聊配对系统方案设计</title>
       <link href="http://192.168.73.128:4000/2015/12/22/%E8%AF%9D%E9%A2%98%E8%81%8A%E9%85%8D%E5%AF%B9%E7%B3%BB%E7%BB%9F%E6%B5%85%E8%BF%B0/"/>
       <pubDate>2015-12-22T00:00:00-06:00</pubDate>
-      <author>chriswei</author>
+      <author>ftom</author>
       <guid>http://192.168.73.128:4000/2015/12/22/话题聊配对系统浅述</guid>
       <content:encoded><![CDATA[<hr />
 
@@ -216,19 +729,15 @@ clientkey：key：clientkey，value：bool，配对上的uid
       <title>陌生人群组项目架构浅述</title>
       <link href="http://192.168.73.128:4000/2015/12/15/%E9%99%8C%E7%94%9F%E4%BA%BA%E7%BE%A4%E7%BB%84%E9%A1%B9%E7%9B%AE%E6%9E%B6%E6%9E%84%E6%B5%85%E8%BF%B0/"/>
       <pubDate>2015-12-15T00:00:00-06:00</pubDate>
-      <author>chriswei</author>
+      <author>ftom</author>
       <guid>http://192.168.73.128:4000/2015/12/15/陌生人群组项目架构浅述</guid>
-      <content:encoded><![CDATA[<hr />
-
-<p>   去年还在做社交产品后台。过了不到半年原部门就被解散了，如今入职游戏已经半年有余了。
+      <content:encoded><![CDATA[<p>去年还在做社交产品后台。过了不到半年原部门就被解散了，如今入职游戏已经半年有余了。
 昨天跟一个技术总监闲聊，他问了我下过去都做过什么。摸摸脑袋竟然有好些细节都遗忘了。
 趁着入职新项目组还有一周的交接时间，把过去的做过的服务挑出来。做下陈述总结。</p>
 
 <hr />
 
-<hr />
-
-<p>   去年做过的服务是一个陌生人群聊的服务。主打兴趣社交，有群组聊天，有lbs 活动，
+<p>去年做过的服务是一个陌生人群聊的服务。主打兴趣社交，有群组聊天，有lbs 活动，
 有话题速配聊天等服务。而我恰好都接触一些。 今天就先简单陈述下后台的整体架构和涉及到的一些细节.
 服务器的设计和部署是冲着海量用户去的。在北京，上海，深圳三地都设置有接入点。处理后台集中部署在上海。
 陈述前先细述下产品的策略架构。如下所示：
@@ -237,8 +746,6 @@ clientkey：key：clientkey，value：bool，配对上的uid
 <hr />
 
 <h3>首次登陆处理流程是这样的：</h3>
-
-<hr />
 
 <ol>
 <li>客户端会写死一个域名。登陆的时候会访问域名所在的Mapping Server 映射服务器。
@@ -265,10 +772,7 @@ clientkey：key：clientkey，value：bool，配对上的uid
 
 <hr />
 
-<hr />
-
-<pre><code>请求流向有两个：
-</code></pre>
+<p>请求流向有两个：</p>
 
 <ol>
 <li>从长连接服务器->轻逻辑层服务->重逻辑服务<->db.常规请求类似于拉取个人资料，群资料会按照这个路径来走并原路返回</li>
@@ -280,9 +784,7 @@ A用户接入机->轻逻辑层服务－>重逻辑服务层（聊天svr，做群�
 
 <hr />
 
-<h3>以上架构中有几个细节不得不提:</h3>
-
-<hr />
+<h3>以上架构中有几个细节需要提下:</h3>
 
 <ol>
 <li>轻逻辑层和重逻辑层不缓存任何用户数据，每个请求到来之后都是立马从数据库拉取最新数据进行处理。状态只保存在数据层。这种处理方式的好处是可以无障碍平行扩容。全程不需要开发介入，运维改改配置就能迅速增大系统的处理能力</li>
@@ -295,31 +797,21 @@ A用户接入机->轻逻辑层服务－>重逻辑服务层（聊天svr，做群�
 
 <h3>业界的经典处理方法如下:</h3>
 
-<hr />
-
-<pre><code>在主调和被调之间加一层proxy代理层。主调方只要无脑转发给proxy层就行。
-</code></pre>
-
-<p>Proxy这里会进行负载均衡 并会检测每个请求的错误情况。如果是非逻辑错误超过
+<p>在主调和被调之间加一层proxy代理层。主调方只要无脑转发给proxy层就行。
+Proxy这里会进行负载均衡 并会检测每个请求的错误情况。如果是非逻辑错误超过
 一定阀值，或者定期发送给被调方的心跳没有及时 收到回包，就会告警并且自动将
 被调方的故障服务器自动屏蔽一段时间，过段时间再重试下决策是否重新加入服务列表里。
 <img src="http://7xp7tl.com1.z0.glb.clouddn.com/proxy.PNG" alt="代理转发" /></p>
 
-<pre><code>不过项目采用的是我见过的最优雅的处理方式。也就是上图架构中 的虚拟地址到物理地址的映射服务。
-</code></pre>
-
-<p><img src="http://7xp7tl.com1.z0.glb.clouddn.com/L.PNG" alt="虚拟地址到物理地址转换服务" /></p>
+<p>不过项目采用的是我见过的最优雅的处理方式。也就是上图架构中 的虚拟地址到物理地址的映射服务。
+<img src="http://7xp7tl.com1.z0.glb.clouddn.com/L.PNG" alt="虚拟地址到物理地址转换服务" /></p>
 
 <hr />
 
 <h3>工作机理是：</h3>
 
-<hr />
-
-<pre><code>在每个服务器上维护一个agent。这个agengt负责接受映射中心推送过来的映射结果。
-</code></pre>
-
-<p>映射结果 是key=》ip，port。 主调方只要采用调用映射服务的api，传入key，
+<p>在每个服务器上维护一个agent。这个agengt负责接受映射中心推送过来的映射结果。
+映射结果 是key=》ip，port。 主调方只要采用调用映射服务的api，传入key，
 可以自动获取到ip，port。这个ip和port 是agent 计算出来的结果， 兼顾了负载均衡的逻辑。
 每个请求调用结束之后都会上报业务错误码给agent，由agent 进行决策看是否是后端某个服务出故障了。
 当然agent也会定期发送心跳给后端服务器。Agent得到的服务器检测结果会上报给映射中心。
@@ -327,16 +819,10 @@ A用户接入机->轻逻辑层服务－>重逻辑服务层（聊天svr，做群�
 
 <hr />
 
-<hr />
-
-<pre><code>主调方采用滞后反馈的结果才连接后端，这种处理方式将负载均衡的功能处理成旁路逻辑。
-</code></pre>
-
-<p>提升了性能，而且后端的运维升级完全对前端来说事透明的。 当然有人会说以上的架构不就是接入层，
+<p>主调方采用滞后反馈的结果才连接后端，这种处理方式将负载均衡的功能处理成旁路逻辑。
+提升了性能，而且后端的运维升级完全对前端来说事透明的。 当然有人会说以上的架构不就是接入层，
 逻辑层，数据层这套东西吗。凭什么你这套架构就能够处理海量服务。但我想纠正一点
 海量的服务体现在系统的各个细节处理上。而不是这些大概的层级划分。</p>
-
-<hr />
 
 <hr />
 
@@ -348,16 +834,10 @@ A用户接入机->轻逻辑层服务－>重逻辑服务层（聊天svr，做群�
 <li>轻逻辑层这里的网络连接采用的是proxy，worker的处理模型。请求会以队列的形式进行排队处理。进队列的时候都会打上一个时间戳。如果超过队列缓存的最大个数，新来的请求会直接丢弃。如果从队列中获取到的请求等待时间过长也直接丢弃。</li>
 <li>客户端这里也会谨慎重试。如果发现后端返回的错误码显示过载，会采用N步回退的重试策略，或者是出动画或者提示降低用户的焦躁感避免疯狂重试。</li>
 <li>对于每个请求的成功，失败，返回码。时延，错误码分布，时间，qua这些维度的信息，都会在框架api里进行统一的封装上报。可以在监控平台里快速查询到接口在某个具体时间段的处理情况。如果超过一定阀值会进行短信，微信轰炸，第一时间通知到责任人</li>
-<li>对于每台服务器都有流量，CPU，磁盘IO监控。对于每个涉及到用户关键数据的修改请求都有流水记录。方便出现问题的时候快速获取上下文处理。
-
-<ol>
+<li>对于每台服务器都有流量，CPU，磁盘IO监控。对于每个涉及到用户关键数据的修改请求都有流水记录。方便出现问题的时候快速获取上下文处理。</li>
 <li>对于功能相近的请求做抽象，进行并包处理。减少网络请求的耗时（国内跨地区的时延往返在100ms左右，不算上网络延迟堵塞这种情况）</li>
 </ol>
-</li>
-</ol>
 
-
-<hr />
 
 <hr />
 
@@ -403,17 +883,9 @@ ip端口数据。用户群聊的时候会批量拉取群内用户的在线状态
 
 <hr />
 
-<hr />
-
-<pre><code>以上处理方式适用于社交相关的应用。总体思想是先扛住再优化,架构上支持快速扩容,
-</code></pre>
-
-<p>柔性可用。在有限的资源支撑下快速应对随时会爆发的互联网海量请求服务。</p>
-
-<pre><code>写得太书面了，最近文笔退却好多争取以后写得幽默风趣点啊！
-</code></pre>
-
-<hr />
+<p>以上处理方式适用于社交相关的应用。总体思想是先扛住再优化,架构上支持快速扩容,
+柔性可用。在有限的资源支撑下快速应对随时会爆发的互联网海量请求服务。
+写得太书面了，最近文笔退却好多争取以后写得幽默风趣点啊！</p>
 ]]></content:encoded>
     </item>
     
@@ -421,7 +893,7 @@ ip端口数据。用户群聊的时候会批量拉取群内用户的在线状态
       <title>vim读书笔记</title>
       <link href="http://192.168.73.128:4000/2014/10/21/vim-read-book-note/"/>
       <pubDate>2014-10-21T00:00:00-05:00</pubDate>
-      <author>chriswei</author>
+      <author>ftom</author>
       <guid>http://192.168.73.128:4000/2014/10/21/vim-read-book-note</guid>
       <content:encoded><![CDATA[<hr />
 
@@ -858,7 +1330,7 @@ Normal mode
       <title>类微博类产品mysql存储方案设计.</title>
       <link href="http://192.168.73.128:4000/2014/10/18/like-microblog-mysql-table-design/"/>
       <pubDate>2014-10-18T00:00:00-05:00</pubDate>
-      <author>chriswei</author>
+      <author>ftom</author>
       <guid>http://192.168.73.128:4000/2014/10/18/like-microblog-mysql-table-design</guid>
       <content:encoded><![CDATA[<hr />
 

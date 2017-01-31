@@ -6,4 +6,6 @@ highlighter: pygments
 safe: true
 paginate: 16
 gems: [jekyll-paginate]
+highlighter: pygments
+mardown: redcarpet
 
