@@ -8,4 +8,5 @@ paginate: 16
 gems: [jekyll-paginate]
 highlighter: pygments
 mardown: redcarpet
+baidu-analysis: 1f7dbc7243064c6e1a294bd85b50f754
 
