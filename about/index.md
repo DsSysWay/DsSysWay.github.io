@@ -35,7 +35,7 @@ comments: no
 
 ### 联系方式：        
 
-个人邮箱: [linuxserverlove@gmail.com](mailto:linuxserverlove@gmail.com)     
+个人邮箱: [linuxserverlover@gmail.com](mailto:linuxserverlover@gmail.com)     
 github : [DsSysWay](https://github.com/DsSysWay)        
 
 ----
